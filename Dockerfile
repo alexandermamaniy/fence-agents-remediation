@@ -53,5 +53,16 @@ RUN dnf install -y dnf-plugins-core \
     fence-agents-kubevirt fence-agents-ibm-powervs fence-agents-ibm-vpc \
     && dnf clean all -y
 
+# Add fence_ibmz from upstream (no RPM available in HighAvailability repo)
+# python3 and curl are already present in the base image; only python3-requests is needed
+RUN dnf install -y python3-requests \
+    && dnf clean all -y \
+    && curl -sL -o fence_ibmz.py https://raw.githubusercontent.com/ClusterLabs/fence-agents/master/agents/ibmz/fence_ibmz.py \
+    && sed -i 's+@PYTHON@+/usr/libexec/platform-python+' fence_ibmz.py \
+    && sed -i 's+@FENCEAGENTSLIBDIR@+/usr/share/fence+' fence_ibmz.py \
+    && cp fence_ibmz.py /usr/sbin/fence_ibmz \
+    && chmod +x /usr/sbin/fence_ibmz \
+    && rm fence_ibmz.py
+
 USER 65532:65532
 ENTRYPOINT ["/manager"]
