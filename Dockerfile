@@ -12,8 +12,11 @@ RUN \
     # get Go version from mod file
     export GO_VERSION=$(grep -oE "toolchain go[[:digit:]]\.[[:digit:]]+\.[[:digit:]]" go.mod | awk '{print $2}') && \
     echo ${GO_VERSION} && \
+    # detect host architecture and map to Go arch name
+    export GO_ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/s390x/s390x/;s/ppc64le/ppc64le/') && \
+    echo ${GO_ARCH} && \
     # find filename for latest z version from Go download page
-    export GO_FILENAME=$(curl -sL 'https://go.dev/dl/?mode=json&include=all' | jq -r "[.[] | select(.version == \"${GO_VERSION}\")][0].files[] | select(.os == \"linux\" and .arch == \"s390x\") | .filename") && \
+    export GO_FILENAME=$(curl -sL 'https://go.dev/dl/?mode=json&include=all' | jq -r "[.[] | select(.version == \"${GO_VERSION}\")][0].files[] | select(.os == \"linux\" and .arch == \"${GO_ARCH}\") | .filename") && \
     echo ${GO_FILENAME} && \
     # download and unpack
     curl -sL -o go.tar.gz "https://golang.org/dl/${GO_FILENAME}" && \
@@ -45,12 +48,16 @@ WORKDIR /
 COPY --from=builder /workspace/manager .
 
 # Add many Fence Agents packages
+# fence-agents-aws, fence-agents-azure-arm and fence-agents-gce RPMs are only
+# available on amd64/arm64/ppc64le — skip them on s390x
 RUN dnf install -y dnf-plugins-core \
-    && dnf --enablerepo=highavailability install -y fence-agents-amt-ws fence-agents-apc-snmp fence-agents-cisco-ucs \
+    && dnf --enablerepo=highavailability install -y \
+    fence-agents-amt-ws fence-agents-apc-snmp fence-agents-cisco-ucs \
     fence-agents-eaton-snmp fence-agents-emerson fence-agents-eps fence-agents-ibmblade fence-agents-ifmib fence-agents-ilo2 \
     fence-agents-intelmodular fence-agents-ipdu fence-agents-ipmilan fence-agents-redfish fence-agents-rhevm \
     fence-agents-vmware-rest fence-agents-vmware-soap \
     fence-agents-kubevirt fence-agents-ibm-powervs fence-agents-ibm-vpc \
+    $([ "$(uname -m)" != "s390x" ] && echo "fence-agents-aws fence-agents-azure-arm fence-agents-gce") \
     && dnf clean all -y
 
 # Add fence_ibmz from upstream (no RPM available in HighAvailability repo)
