@@ -48,8 +48,6 @@ WORKDIR /
 COPY --from=builder /workspace/manager .
 
 # Add many Fence Agents packages
-# fence-agents-aws, fence-agents-azure-arm and fence-agents-gce RPMs are only
-# available on amd64/arm64/ppc64le — skip them on s390x
 RUN dnf install -y dnf-plugins-core \
     && dnf --enablerepo=highavailability install -y \
     fence-agents-amt-ws fence-agents-apc-snmp fence-agents-cisco-ucs \
@@ -57,8 +55,14 @@ RUN dnf install -y dnf-plugins-core \
     fence-agents-intelmodular fence-agents-ipdu fence-agents-ipmilan fence-agents-redfish fence-agents-rhevm \
     fence-agents-vmware-rest fence-agents-vmware-soap \
     fence-agents-kubevirt fence-agents-ibm-powervs fence-agents-ibm-vpc \
-    $([ "$(uname -m)" != "s390x" ] && echo "fence-agents-aws fence-agents-azure-arm fence-agents-gce") \
     && dnf clean all -y
+
+RUN export IMAGE_ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/s390x/s390x/;s/ppc64le/ppc64le/') \
+    && if [ "$IMAGE_ARCH" != "s390x" ]; then \
+        dnf --enablerepo=highavailability install -y \
+        fence-agents-aws fence-agents-azure-arm fence-agents-gce \
+        && dnf clean all -y; \
+    fi
 
 # Add fence_ibmz from upstream (no RPM available in HighAvailability repo)
 # python3 and curl are already present in the base image; only python3-requests is needed
