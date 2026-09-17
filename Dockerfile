@@ -68,7 +68,7 @@ RUN export IMAGE_ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/s390x
 # python3 and curl are already present in the base image; only python3-requests is needed
 RUN dnf install -y python3-requests \
     && dnf clean all -y \
-    && curl -sL -o fence_ibmz.py https://raw.githubusercontent.com/ClusterLabs/fence-agents/master/agents/ibmz/fence_ibmz.py \
+    && curl -sL -o fence_ibmz.py https://raw.githubusercontent.com/alexandermamaniy/fence-agents/fence_ibmz/agents/ibmz/fence_ibmz.py \
     && sed -i 's+@PYTHON@+/usr/libexec/platform-python+' fence_ibmz.py \
     && sed -i 's+@FENCEAGENTSLIBDIR@+/usr/share/fence+' fence_ibmz.py \
     && cp fence_ibmz.py /usr/sbin/fence_ibmz \
